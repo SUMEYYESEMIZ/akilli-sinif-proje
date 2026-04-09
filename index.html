@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akıllı Sınıf Sistemi — Dashboard</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="js/data.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🏫</div>
+      <div class="logo-title">Akıllı Sınıf Sistemi</div>
+      <div class="logo-sub">ASHRAE & EN 12464-1 Uyumlu</div>
+    </div>
+    <nav>
+      <div class="nav-sec">Ana Menü</div>
+      <a class="nav-item active" href="index.html">📊 Dashboard</a>
+      <a class="nav-item" href="class.html">🏫 Sınıf Yönetimi</a>
+      <a class="nav-item" href="sensors.html">🌡 Sensör Verileri</a>
+      <a class="nav-item" href="report.html">📈 Analiz & Rapor</a>
+      <div class="nav-sec">Sistem</div>
+      <a class="nav-item" href="settings.html">⚙ Eşik Değerleri</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sys-status"><span class="pulse"></span>Sistem Aktif</div>
+      <div style="font-size:10px;color:#334155;margin-top:4px;" id="clock"></div>
+      <div style="font-size:10px;color:#334155;margin-top:2px;">HTML / CSS / JS</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Dashboard</div>
+        <div class="page-sub">Gerçek zamanlı enerji ve hava kalitesi izleme</div>
+      </div>
+      <div class="tbadges">
+        <span class="tbadge tbg">Sistem Aktif</span>
+        <span class="tbadge tbb" id="tb-ogrenci">Toplam: — Öğrenci</span>
+        <span class="tbadge tby" id="tb-konfor">Ort. Konfor: —</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- METRİK KARTLAR -->
+      <div class="metrics-grid">
+        <div class="mcard">
+          <div class="mlabel">Ortalama CO2 (ASHRAE 62.1)</div>
+          <div class="mval good" id="m-co2">— <span class="munit">ppm</span></div>
+          <div class="msub good" id="m-co2-sub">—</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">Ortalama Sıcaklık (ASHRAE 55)</div>
+          <div class="mval info" id="m-temp">— <span class="munit">°C</span></div>
+          <div class="msub good">İdeal: 20–24°C</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">Ortalama Nem (ASHRAE)</div>
+          <div class="mval purple" id="m-nem">— <span class="munit">%</span></div>
+          <div class="msub good">İdeal: %40–60</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">Doğal Işık (EN 12464-1)</div>
+          <div class="mval warn" id="m-ldr">— <span class="munit">lx</span></div>
+          <div class="msub" id="m-ldr-sub">Min: 300 lx</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">Ortalama Konfor Puanı</div>
+          <div class="mval good" id="m-konfor">— <span class="munit">/100</span></div>
+          <div class="msub good">CO2+Sıcaklık+Nem</div>
+        </div>
+      </div>
+
+      <!-- OTO SİMÜLASYON -->
+      <div class="sim-banner">
+        <span class="sim-banner-text" id="sim-text">Otomatik simülasyon: Kapalı — Öğrenci giriş/çıkışını manuel yönetmek için Sınıf Yönetimi'ne gidin</span>
+        <button class="sim-btn sim-start" id="sim-btn" onclick="toggleSim()">Simülasyonu Başlat</button>
+      </div>
+
+      <!-- SINIF KARTLARI -->
+      <div class="sec-title">Sınıf Durumları</div>
+      <div class="sinif-grid" id="sinif-cards"></div>
+
+      <!-- ALT PANELLER -->
+      <div class="bottom2">
+        <div class="panel">
+          <div class="ptitle">CO2 Zaman Serisi — Sınıf A (800 ppm ASHRAE eşiği)</div>
+          <div class="chart-wrap">
+            <canvas id="co2Chart" role="img" aria-label="CO2 zaman serisi grafiği">CO2 değerleri zaman serisi</canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ptitle">Sistem Logları</div>
+          <div class="log-list" id="log-list"></div>
+        </div>
+      </div>
+
+      <div class="bottom3">
+        <div class="panel">
+          <div class="ptitle">PIR Hareket Sensörü</div>
+          <div id="pir-status"></div>
+        </div>
+        <div class="panel">
+          <div class="ptitle">LDR Doğal Işık Durumu</div>
+          <div id="ldr-status"></div>
+        </div>
+        <div class="panel">
+          <div class="ptitle">Pencere Durumu (CO2 kontrolü)</div>
+          <div id="pencere-status"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // CO2 geçmiş verisi
+  const co2Gecmis = { labels: [], data: [] };
+  let simAktif = false;
+  let simInterval = null;
+  let logInterval = null;
+
+  const logMesajlari = [
+    { renk: '#4ade80', msg: () => `Sınıf A: CO2 ${SINIFLAR[0].co2} ppm — ${co2Durum(SINIFLAR[0].co2)}` },
+    { renk: '#60a5fa', msg: () => `Sınıf A: Sıcaklık ${SINIFLAR[0].temp}°C` },
+    { renk: '#a78bfa', msg: () => `Sınıf B: PIR — ${SINIFLAR[1].pir ? 'Hareket var' : 'Hareket yok'}` },
+    { renk: '#fbbf24', msg: () => `LDR: ${hesaplaLDR()} lx — ${hesaplaLDR() >= 300 ? 'Yeterli' : 'Yetersiz'}` },
+    { renk: '#4ade80', msg: () => `Sınıf C: Konfor puanı ${SINIFLAR[2].konfor}/100` },
+  ];
+
+  const loglar = [
+    { time: saatStr(), msg: 'Sistem başlatıldı — ASHRAE standartları yüklendi', renk: '#8b5cf6' }
+  ];
+
+  function logEkle(renk, msg) {
+    loglar.unshift({ time: saatStr(), msg, renk });
+    if (loglar.length > 10) loglar.pop();
+  }
+
+  // CO2 grafiği
+  let co2Chart = null;
+
+  function co2GrafiginiOlustur() {
+    const ctx = document.getElementById('co2Chart').getContext('2d');
+    co2Chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: co2Gecmis.labels,
+        datasets: [
+          {
+            label: 'CO2 (ppm)',
+            data: co2Gecmis.data,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.07)',
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#3b82f6',
+            pointRadius: 3
+          },
+          {
+            label: 'Uyarı Eşiği (800 ppm)',
+            data: Array(co2Gecmis.labels.length).fill(800),
+            borderColor: '#fbbf24',
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false,
+            borderWidth: 1.5
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#334155', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+          y: { ticks: { color: '#334155', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.03)' }, min: 380, max: 1100 }
+        }
+      }
+    });
+  }
+
+  function co2GecmisGuncelle() {
+    const now = saatStr();
+    co2Gecmis.labels.push(now);
+    co2Gecmis.data.push(SINIFLAR[0].co2);
+    if (co2Gecmis.labels.length > 10) {
+      co2Gecmis.labels.shift();
+      co2Gecmis.data.shift();
+    }
+    if (co2Chart) {
+      co2Chart.data.datasets[1].data = Array(co2Gecmis.labels.length).fill(800);
+      co2Chart.update();
+    }
+  }
+
+  function renderSinifCards() {
+    const c = document.getElementById('sinif-cards');
+    c.innerHTML = '';
+    SINIFLAR.forEach(s => {
+      const pct = co2Yuzde(s.co2);
+      const co2r = co2Renk(s.co2);
+      const kr = konforRenk(s.konfor);
+      const durum = s.ogrenci > 0 ? (s.co2 >= ESIKLER.co2Kritik ? 'sbw' : 'sbg') : 'sbb';
+      const durumText = s.ogrenci > 0 ? (s.co2 >= ESIKLER.co2Kritik ? 'Uyarı' : 'Aktif') : 'Boş';
+      c.innerHTML += `
+        <div class="sinif-card" onclick="location.href='class.html?sinif=${s.id}'">
+          <div class="sh">
+            <div>
+              <div class="sname">Sınıf ${s.id}</div>
+              <div class="ssub">${s.ogrenci}/${s.max} öğrenci • ${s.mod === 'auto' ? 'Otomatik' : 'Manuel'} Mod</div>
+            </div>
+            <span class="sbadge ${durum}">${durumText}</span>
+          </div>
+          <div class="sensor-grid">
+            <div class="sitem"><div class="slab">CO2 (ASHRAE 62.1)</div><div class="sval" style="color:${co2r}">${s.co2} ppm</div></div>
+            <div class="sitem"><div class="slab">Sıcaklık (ASHRAE 55)</div><div class="sval info">${s.temp}°C</div></div>
+            <div class="sitem"><div class="slab">Nem</div><div class="sval purple">${s.nem}%</div></div>
+            <div class="sitem"><div class="slab">Konfor Puanı</div><div class="sval" style="color:${kr}">${s.konfor}/100</div></div>
+          </div>
+          <div class="prog"><div class="progf" style="width:${pct}%;background:${co2r};"></div></div>
+          <div class="devices-row">
+            <div class="dev"><div class="dev-l">Işık</div><div class="dev-v ${s.isik ? 'dev-on' : 'dev-off'}">${s.isik ? 'ON' : 'OFF'}</div></div>
+            <div class="dev"><div class="dev-l">Klima</div><div class="dev-v info">${s.klima}°C</div></div>
+            <div class="dev"><div class="dev-l">LDR</div><div class="dev-v warn">${s.ldr} lx</div></div>
+          </div>
+        </div>`;
+    });
+  }
+
+  function renderPIRLDR() {
+    document.getElementById('pir-status').innerHTML = SINIFLAR.map(s =>
+      `<div class="ctrl-row" style="margin-bottom:5px;">
+        <span class="ctrl-label" style="font-size:11px;">Sınıf ${s.id}</span>
+        <span style="font-size:11px;color:${s.pir ? '#4ade80' : '#475569'}">${s.pir ? 'Hareket algılandı' : '10 dk yok → Kapatıldı'}</span>
+      </div>`
+    ).join('');
+    document.getElementById('ldr-status').innerHTML = SINIFLAR.map(s =>
+      `<div class="ctrl-row" style="margin-bottom:5px;">
+        <span class="ctrl-label" style="font-size:11px;">Sınıf ${s.id}</span>
+        <span style="font-size:11px;color:${s.ldr >= 300 ? '#4ade80' : '#fbbf24'}">${s.ldr} lx — ${s.ldr >= 500 ? 'Tam yeterli' : s.ldr >= 300 ? 'Yeterli' : 'Yetersiz'}</span>
+      </div>`
+    ).join('');
+    document.getElementById('pencere-status').innerHTML = SINIFLAR.map(s =>
+      `<div class="ctrl-row" style="margin-bottom:5px;">
+        <span class="ctrl-label" style="font-size:11px;">Sınıf ${s.id}</span>
+        <span style="font-size:11px;color:${s.pencere ? '#4ade80' : '#475569'}">${s.pencere ? 'Açık (CO2 yüksek)' : 'Kapalı'}</span>
+      </div>`
+    ).join('');
+  }
+
+  function renderLogs() {
+    document.getElementById('log-list').innerHTML = loglar.slice(0, 8).map(l =>
+      `<div class="log-item">
+        <div class="log-dot" style="background:${l.renk}"></div>
+        <span class="log-time">${l.time}</span>
+        <span class="log-msg">${l.msg}</span>
+      </div>`
+    ).join('');
+  }
+
+  function updateMetrics() {
+    const avg = arr => Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+    const avgCO2 = avg(SINIFLAR.map(s => s.co2));
+    const avgTemp = (SINIFLAR.reduce((a, s) => a + s.temp, 0) / SINIFLAR.length).toFixed(1);
+    const avgNem = avg(SINIFLAR.map(s => s.nem));
+    const avgLDR = avg(SINIFLAR.map(s => s.ldr));
+    const avgK = avg(SINIFLAR.map(s => s.konfor));
+    const toplamOgrenci = SINIFLAR.reduce((a, s) => a + s.ogrenci, 0);
+
+    document.getElementById('m-co2').innerHTML = `${avgCO2} <span class="munit">ppm</span>`;
+    document.getElementById('m-co2-sub').textContent = avgCO2 < 800 ? 'Normal seviye' : avgCO2 < 1000 ? 'Uyarı seviyesi!' : 'Kritik!';
+    document.getElementById('m-co2-sub').className = 'msub ' + (avgCO2 < 800 ? 'good' : avgCO2 < 1000 ? 'warn' : 'danger');
+    document.getElementById('m-temp').innerHTML = `${avgTemp} <span class="munit">°C</span>`;
+    document.getElementById('m-nem').innerHTML = `${avgNem} <span class="munit">%</span>`;
+    document.getElementById('m-ldr').innerHTML = `${avgLDR} <span class="munit">lx</span>`;
+    document.getElementById('m-ldr-sub').textContent = avgLDR >= 300 ? 'Yeterli (EN 12464-1)' : 'Yetersiz — yapay aydınlatma açık';
+    document.getElementById('m-konfor').innerHTML = `${avgK} <span class="munit">/100</span>`;
+    document.getElementById('tb-ogrenci').textContent = `Toplam: ${toplamOgrenci} Öğrenci`;
+    document.getElementById('tb-konfor').textContent = `Ort. Konfor: ${avgK}/100`;
+  }
+
+  function toggleSim() {
+    simAktif = !simAktif;
+    const btn = document.getElementById('sim-btn');
+    const txt = document.getElementById('sim-text');
+    if (simAktif) {
+      btn.textContent = 'Simülasyonu Durdur';
+      btn.className = 'sim-btn sim-stop';
+      txt.textContent = 'Otomatik simülasyon: Aktif — Öğrenciler rastgele giriş/çıkış yapıyor';
+      simInterval = setInterval(() => {
+        SINIFLAR.forEach(s => {
+          const degisim = Math.floor(Math.random() * 3) - 1;
+          s.ogrenci = Math.max(0, Math.min(s.max, s.ogrenci + degisim));
+        });
+        sistemGuncelle();
+        const lm = logMesajlari[Math.floor(Math.random() * logMesajlari.length)];
+        logEkle(lm.renk, lm.msg());
+        tumSayfayiGuncelle();
+      }, 3000);
+    } else {
+      btn.textContent = 'Simülasyonu Başlat';
+      btn.className = 'sim-btn sim-start';
+      txt.textContent = 'Otomatik simülasyon: Kapalı';
+      clearInterval(simInterval);
+    }
+  }
+
+  function tumSayfayiGuncelle() {
+    sistemGuncelle();
+    updateMetrics();
+    renderSinifCards();
+    renderPIRLDR();
+    renderLogs();
+    co2GecmisGuncelle();
+  }
+
+  // Saat
+  setInterval(() => { document.getElementById('clock').textContent = saatStr(); }, 1000);
+  document.getElementById('clock').textContent = saatStr();
+
+  // İlk yükleme
+  for (let i = 0; i < 7; i++) {
+    co2Gecmis.labels.push(`${9 + Math.floor(i / 2)}:${(i * 10) % 60 < 10 ? '0' : ''}${(i * 10) % 60}`);
+    co2Gecmis.data.push(400 + SINIFLAR[0].ogrenci * 45 + Math.round(Math.random() * 20 - 10));
+  }
+  co2GrafiginiOlustur();
+  logEkle('#60a5fa', `Sınıf A: ${SINIFLAR[0].ogrenci} öğrenci — CO2 ${SINIFLAR[0].co2} ppm`);
+  logEkle('#fbbf24', 'Sınıf B & C: Hareket yok — Işık kapalı');
+  logEkle('#4ade80', `LDR: ${hesaplaLDR()} lx — Doğal ışık durumu güncellendi`);
+  tumSayfayiGuncelle();
+
+  // Otomatik güncelleme (30 sn)
+  setInterval(tumSayfayiGuncelle, 30000);
+</script>
+</body>
+</html>

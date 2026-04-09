@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akıllı Sınıf Sistemi — Sınıf Yönetimi</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/data.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🏫</div>
+      <div class="logo-title">Akıllı Sınıf Sistemi</div>
+      <div class="logo-sub">ASHRAE & EN 12464-1 Uyumlu</div>
+    </div>
+    <nav>
+      <div class="nav-sec">Ana Menü</div>
+      <a class="nav-item" href="index.html">📊 Dashboard</a>
+      <a class="nav-item active" href="class.html">🏫 Sınıf Yönetimi</a>
+      <a class="nav-item" href="sensors.html">🌡 Sensör Verileri</a>
+      <a class="nav-item" href="report.html">📈 Analiz & Rapor</a>
+      <div class="nav-sec">Sistem</div>
+      <a class="nav-item" href="settings.html">⚙ Eşik Değerleri</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sys-status"><span class="pulse"></span>Sistem Aktif</div>
+      <div style="font-size:10px;color:#334155;margin-top:4px;" id="clock"></div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Sınıf Yönetimi</div>
+        <div class="page-sub">Öğrenci ekleme/çıkarma, cihaz kontrolleri ve koltuk haritası</div>
+      </div>
+      <div class="tbadges">
+        <span class="tbadge tbg">Sistem Aktif</span>
+        <span class="tbadge tbb" id="tb-ogrenci">Toplam: — Öğrenci</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- SINIF SEÇİM KARTLARI -->
+      <div class="sec-title">Sınıf Seçin</div>
+      <div class="sinif-grid" id="sinif-cards"></div>
+
+      <!-- DETAY -->
+      <div class="bottom2">
+
+        <!-- KOLTUK HARİTASI -->
+        <div class="panel">
+          <div class="ptitle" id="detay-title">Sınıf A — Koltuk Haritası (15 koltuk)</div>
+          <div class="koltuk-grid" id="koltuk-map" style="margin-bottom:14px;"></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
+            <div style="font-size:10px;color:#334155;">
+              <span style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;">
+                <span style="width:10px;height:10px;background:#172554;border-radius:3px;display:inline-block;"></span>Dolu
+              </span>
+              <span style="display:inline-flex;align-items:center;gap:4px;">
+                <span style="width:10px;height:10px;background:#1e2340;border-radius:3px;display:inline-block;"></span>Boş
+              </span>
+            </div>
+            <div class="ogrenci-ctrl">
+              <button class="pm-btn" onclick="ogrenciDegistir(-1)">−</button>
+              <span class="ogrenci-sayac" id="ogrenci-sayac">8</span>
+              <button class="pm-btn" onclick="ogrenciDegistir(1)">+</button>
+              <span style="font-size:11px;color:#475569;">/ 15</span>
+            </div>
+          </div>
+
+          <!-- CO2 UYARI -->
+          <div id="co2-uyari" style="margin-top:12px;"></div>
+        </div>
+
+        <!-- CİHAZ KONTROL -->
+        <div class="panel">
+          <div class="ptitle">Cihaz Kontrol Paneli</div>
+          <div class="ctrl-panel" id="ctrl-panel"></div>
+
+          <!-- MOD SEÇİMİ -->
+          <div style="margin-top:14px;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:6px;">Kontrol Modu</div>
+            <div class="mod-btns">
+              <button class="mb sel" id="mb-auto" onclick="setMod('auto')">🤖 Otomatik</button>
+              <button class="mb" id="mb-manual" onclick="setMod('manual')">✋ Manuel</button>
+            </div>
+            <div style="font-size:10px;color:#334155;margin-top:8px;" id="mod-desc">
+              Otomatik mod: Sensör verilerine göre sistem kararı verir.
+            </div>
+          </div>
+
+          <!-- SENSÖR ANLIKT DEĞERLERİ -->
+          <div style="margin-top:14px;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:8px;">Anlık Sensör Değerleri</div>
+            <div class="sensor-detail" id="sensor-anlık"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TÜM SINIFLAR ÖZET -->
+      <div class="panel">
+        <div class="ptitle">Tüm Sınıflar — Hızlı Özet</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="ozet-grid"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  let secilen = 0;
+
+  // URL'den sınıf parametresi al
+  const urlParams = new URLSearchParams(window.location.search);
+  const sinifParam = urlParams.get('sinif');
+  if (sinifParam) {
+    const idx = SINIFLAR.findIndex(s => s.id === sinifParam);
+    if (idx !== -1) secilen = idx;
+  }
+
+  function ogrenciDegistir(miktar) {
+    const s = SINIFLAR[secilen];
+    s.ogrenci = Math.max(0, Math.min(s.max, s.ogrenci + miktar));
+    sistemGuncelle();
+    sayfayiGuncelle();
+  }
+
+  function setMod(mod) {
+    SINIFLAR[secilen].mod = mod;
+    sayfayiGuncelle();
+  }
+
+  function togCihaz(idx, tip) {
+    if (SINIFLAR[idx].mod !== 'manual') return;
+    if (tip === 'isik') SINIFLAR[idx].isik = !SINIFLAR[idx].isik;
+    if (tip === 'pencere') SINIFLAR[idx].pencere = !SINIFLAR[idx].pencere;
+    sayfayiGuncelle();
+  }
+
+  function adjKlima(idx, d) {
+    if (SINIFLAR[idx].mod !== 'manual') return;
+    SINIFLAR[idx].klima = Math.max(16, Math.min(30, SINIFLAR[idx].klima + d));
+    sayfayiGuncelle();
+  }
+
+  function renderSinifCards() {
+    const c = document.getElementById('sinif-cards');
+    c.innerHTML = '';
+    SINIFLAR.forEach((s, i) => {
+      const co2r = co2Renk(s.co2);
+      const kr = konforRenk(s.konfor);
+      const d = document.createElement('div');
+      d.className = 'sinif-card' + (i === secilen ? ' sel' : '');
+      d.onclick = () => { secilen = i; sayfayiGuncelle(); };
+      d.innerHTML = `
+        <div class="sh">
+          <div><div class="sname">Sınıf ${s.id}</div><div class="ssub">${s.ogrenci}/${s.max} öğrenci</div></div>
+          <span class="sbadge ${s.ogrenci > 0 ? 'sbg' : 'sbb'}">${s.ogrenci > 0 ? 'Aktif' : 'Boş'}</span>
+        </div>
+        <div class="sensor-grid">
+          <div class="sitem"><div class="slab">CO2</div><div class="sval" style="color:${co2r}">${s.co2} ppm</div></div>
+          <div class="sitem"><div class="slab">Konfor</div><div class="sval" style="color:${kr}">${s.konfor}/100</div></div>
+        </div>
+        <div class="prog"><div class="progf" style="width:${co2Yuzde(s.co2)}%;background:${co2r};"></div></div>`;
+      c.appendChild(d);
+    });
+  }
+
+  function renderDetay() {
+    const s = SINIFLAR[secilen];
+    document.getElementById('detay-title').textContent = `Sınıf ${s.id} — Koltuk Haritası (${s.max} koltuk)`;
+    document.getElementById('ogrenci-sayac').textContent = s.ogrenci;
+
+    // Koltuk haritası
+    const km = document.getElementById('koltuk-map');
+    km.innerHTML = '';
+    for (let i = 0; i < s.max; i++) {
+      const k = document.createElement('div');
+      k.className = 'koltuk ' + (i < s.ogrenci ? 'kd' : 'kb');
+      k.textContent = i < s.ogrenci ? '👤' : '';
+      k.title = i < s.ogrenci ? `${i + 1}. öğrenci` : 'Boş koltuk';
+      km.appendChild(k);
+    }
+
+    // CO2 uyarı
+    const co2u = document.getElementById('co2-uyari');
+    if (s.co2 >= ESIKLER.co2Kritik) {
+      co2u.innerHTML = `<div class="uyari-box uyari-danger">⚠ CO2 ${s.co2} ppm — KRİTİK! Pencere açılıyor, havalandırma başlatıldı.</div>`;
+    } else if (s.co2 >= ESIKLER.co2Normal) {
+      co2u.innerHTML = `<div class="uyari-box uyari-warn">⚡ CO2 ${s.co2} ppm — Uyarı seviyesi. Havalandırma önerilir.</div>`;
+    } else {
+      co2u.innerHTML = `<div class="uyari-box uyari-good">✓ CO2 ${s.co2} ppm — Normal seviye. Hava kalitesi iyi.</div>`;
+    }
+
+    // Cihaz kontrol paneli
+    const manuelMi = s.mod === 'manual';
+    document.getElementById('ctrl-panel').innerHTML = `
+      <div class="ctrl-row">
+        <span class="ctrl-label">Işık (Yapay Aydınlatma)</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:10px;color:#475569;">${s.isik ? 'Açık' : 'Kapalı'}</span>
+          <div class="toggle ${s.isik ? 'on' : ''}" onclick="togCihaz(${secilen},'isik')" title="${manuelMi ? 'Tıkla' : 'Manuel modda değiştirilebilir'}"></div>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">Klima Sıcaklığı</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <button class="pm-btn" onclick="adjKlima(${secilen},-1)">−</button>
+          <span style="font-size:13px;font-weight:bold;color:#60a5fa;min-width:35px;text-align:center;">${s.klima}°C</span>
+          <button class="pm-btn" onclick="adjKlima(${secilen},1)">+</button>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">Pencere</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:10px;color:#475569;">${s.pencere ? 'Açık' : 'Kapalı'}</span>
+          <div class="toggle ${s.pencere ? 'on' : ''}" onclick="togCihaz(${secilen},'pencere')"></div>
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">PIR Hareket Sensörü</span>
+        <span style="font-size:11px;color:${s.pir ? '#4ade80' : '#475569'}">${s.pir ? '● Hareket algılandı' : '○ 10 dk yok'}</span>
+      </div>
+      <div class="ctrl-row">
+        <span class="ctrl-label">LDR Doğal Işık</span>
+        <span style="font-size:11px;color:${s.ldr >= 300 ? '#4ade80' : '#fbbf24'}">${s.ldr} lx — ${s.ldr >= 300 ? 'Yeterli' : 'Yetersiz'}</span>
+      </div>
+      ${!manuelMi ? '<div style="font-size:10px;color:#334155;padding:8px;background:#0a0c16;border-radius:7px;margin-top:4px;">Cihazları değiştirmek için Manuel moda geçin.</div>' : ''}
+    `;
+
+    // Mod butonları
+    document.getElementById('mb-auto').className = 'mb' + (s.mod === 'auto' ? ' sel' : '');
+    document.getElementById('mb-manual').className = 'mb' + (s.mod === 'manual' ? ' sel' : '');
+    document.getElementById('mod-desc').textContent = s.mod === 'auto'
+      ? 'Otomatik mod: CO2, sıcaklık ve LDR verilerine göre sistem kararı verir.'
+      : 'Manuel mod: Tüm kararlar kullanıcı tarafından alınır. Otomatik kontrol devre dışı.';
+
+    // Anlık sensör değerleri
+    document.getElementById('sensor-anlık').innerHTML = `
+      <div class="sd-item">
+        <div class="sd-label">CO2 (ASHRAE 62.1)</div>
+        <div class="sd-val" style="color:${co2Renk(s.co2)}">${s.co2} ppm</div>
+        <div class="sd-bar"><div class="sd-fill" style="width:${co2Yuzde(s.co2)}%;background:${co2Renk(s.co2)};"></div></div>
+        <div class="sd-range"><span>400</span><span>${co2Durum(s.co2)}</span><span>1200</span></div>
+      </div>
+      <div class="sd-item">
+        <div class="sd-label">Sıcaklık (ASHRAE 55-2017)</div>
+        <div class="sd-val info">${s.temp}°C</div>
+        <div class="sd-bar"><div class="sd-fill" style="width:${Math.round((s.temp - 15) / 20 * 100)}%;background:#60a5fa;"></div></div>
+        <div class="sd-range"><span>15°C</span><span>${s.temp >= ESIKLER.tempMin && s.temp <= ESIKLER.tempMax ? 'İdeal' : 'Dışarı'}</span><span>35°C</span></div>
+      </div>
+      <div class="sd-item">
+        <div class="sd-label">Nem (ASHRAE)</div>
+        <div class="sd-val purple">${s.nem}%</div>
+        <div class="sd-bar"><div class="sd-fill" style="width:${s.nem}%;background:#8b5cf6;"></div></div>
+        <div class="sd-range"><span>0%</span><span>${s.nem >= ESIKLER.nemMin && s.nem <= ESIKLER.nemMax ? 'İdeal' : 'Dışarı'}</span><span>100%</span></div>
+      </div>
+      <div class="sd-item">
+        <div class="sd-label">Konfor Puanı</div>
+        <div class="sd-val" style="color:${konforRenk(s.konfor)}">${s.konfor}/100</div>
+        <div class="sd-bar"><div class="sd-fill" style="width:${s.konfor}%;background:${konforRenk(s.konfor)};"></div></div>
+        <div class="sd-range"><span>0</span><span>${s.konfor >= 80 ? 'İyi' : s.konfor >= 60 ? 'Orta' : 'Kötü'}</span><span>100</span></div>
+      </div>
+    `;
+  }
+
+  function renderOzetGrid() {
+    document.getElementById('ozet-grid').innerHTML = SINIFLAR.map(s => `
+      <div style="background:#0a0c16;border-radius:10px;padding:12px;">
+        <div style="font-size:13px;font-weight:bold;color:#e2e8f0;margin-bottom:8px;">Sınıf ${s.id}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;font-size:11px;">
+          <span style="color:#334155;">Öğrenci:</span><span style="color:#60a5fa;">${s.ogrenci}/${s.max}</span>
+          <span style="color:#334155;">CO2:</span><span style="color:${co2Renk(s.co2)}">${s.co2} ppm</span>
+          <span style="color:#334155;">Sıcaklık:</span><span style="color:#60a5fa;">${s.temp}°C</span>
+          <span style="color:#334155;">Nem:</span><span style="color:#a78bfa;">${s.nem}%</span>
+          <span style="color:#334155;">Konfor:</span><span style="color:${konforRenk(s.konfor)}">${s.konfor}/100</span>
+          <span style="color:#334155;">Mod:</span><span style="color:#64748b;">${s.mod === 'auto' ? 'Otomatik' : 'Manuel'}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function sayfayiGuncelle() {
+    sistemGuncelle();
+    renderSinifCards();
+    renderDetay();
+    renderOzetGrid();
+    document.getElementById('tb-ogrenci').textContent = `Toplam: ${SINIFLAR.reduce((a, s) => a + s.ogrenci, 0)} Öğrenci`;
+  }
+
+  setInterval(() => { document.getElementById('clock').textContent = saatStr(); }, 1000);
+  document.getElementById('clock').textContent = saatStr();
+  sayfayiGuncelle();
+</script>
+</body>
+</html>

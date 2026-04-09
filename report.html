@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akıllı Sınıf Sistemi — Analiz & Rapor</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <script src="js/data.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🏫</div>
+      <div class="logo-title">Akıllı Sınıf Sistemi</div>
+      <div class="logo-sub">ASHRAE & EN 12464-1 Uyumlu</div>
+    </div>
+    <nav>
+      <div class="nav-sec">Ana Menü</div>
+      <a class="nav-item" href="index.html">📊 Dashboard</a>
+      <a class="nav-item" href="class.html">🏫 Sınıf Yönetimi</a>
+      <a class="nav-item" href="sensors.html">🌡 Sensör Verileri</a>
+      <a class="nav-item active" href="report.html">📈 Analiz & Rapor</a>
+      <div class="nav-sec">Sistem</div>
+      <a class="nav-item" href="settings.html">⚙ Eşik Değerleri</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sys-status"><span class="pulse"></span>Sistem Aktif</div>
+      <div style="font-size:10px;color:#334155;margin-top:4px;" id="clock"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Analiz & Rapor</div>
+        <div class="page-sub">Enerji tasarrufu, konfor analizi ve karşılaştırmalı raporlama</div>
+      </div>
+      <div class="tbadges">
+        <span class="tbadge tbg">Enerji Tasarrufu: %24</span>
+        <span class="tbadge tby">Işık Tasarrufu: %31</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- METRİK KARTLAR -->
+      <div class="metrics-grid">
+        <div class="mcard">
+          <div class="mlabel">Enerji Tasarrufu</div>
+          <div class="mval good">24 <span class="munit">%</span></div>
+          <div class="msub good">Hedef: %20+</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">Ortalama Konfor</div>
+          <div class="mval good" id="r-konfor">—</div>
+          <div class="msub good">100 üzerinden</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">Pencere Açılma</div>
+          <div class="mval info">3 <span class="munit">kez</span></div>
+          <div class="msub" style="color:#475569">Bugün / CO2 kontrolü</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">LDR Işık Tasarrufu</div>
+          <div class="mval good">31 <span class="munit">%</span></div>
+          <div class="msub good">Doğal ışık etkisi</div>
+        </div>
+        <div class="mcard">
+          <div class="mlabel">PIR Tasarrufu</div>
+          <div class="mval good">18 <span class="munit">%</span></div>
+          <div class="msub good">Hareketsiz sınıflar</div>
+        </div>
+      </div>
+
+      <!-- UYARILAR -->
+      <div id="uyari-list" style="margin-bottom:14px;"></div>
+
+      <!-- ANA GRAFİKLER -->
+      <div class="bottom2">
+        <div class="panel">
+          <div class="ptitle">Sınıf Konfor & Sensör Analizi</div>
+          <div id="rapor-list"></div>
+        </div>
+        <div class="panel">
+          <div class="ptitle">CO2 Karşılaştırması (ppm)</div>
+          <div class="chart-wrap">
+            <canvas id="barChart" role="img" aria-label="Sınıfların CO2 karşılaştırması">CO2 karşılaştırma grafiği</canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- KÜÇÜK GRAFİKLER -->
+      <div class="bottom3">
+        <div class="panel">
+          <div class="ptitle">Nem Dağılımı (%)</div>
+          <div class="chart-wrap" style="height:160px;">
+            <canvas id="nemChart" role="img" aria-label="Nem dağılımı grafiği">Nem grafiği</canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ptitle">Sıcaklık Karşılaştırması (°C)</div>
+          <div class="chart-wrap" style="height:160px;">
+            <canvas id="tempChart" role="img" aria-label="Sıcaklık karşılaştırması">Sıcaklık grafiği</canvas>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ptitle">Konfor Puanı Dağılımı</div>
+          <div class="chart-wrap" style="height:160px;">
+            <canvas id="konforChart" role="img" aria-label="Konfor dağılımı">Konfor grafiği</canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- KARŞILAŞTIRMALI ANALİZ -->
+      <div class="panel">
+        <div class="ptitle">Manuel Kullanım vs Akıllı Sistem — Enerji Karşılaştırması</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+          <div style="background:#0a0c16;border-radius:10px;padding:14px;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:8px;">Aydınlatma</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#334155;">Manuel</span>
+              <span style="font-size:13px;color:#f87171;font-weight:bold;">100%</span>
+            </div>
+            <div style="height:6px;background:#1e2340;border-radius:3px;margin-bottom:8px;">
+              <div style="width:100%;height:100%;background:#f87171;border-radius:3px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#334155;">Akıllı Sistem</span>
+              <span style="font-size:13px;color:#4ade80;font-weight:bold;">69%</span>
+            </div>
+            <div style="height:6px;background:#1e2340;border-radius:3px;">
+              <div style="width:69%;height:100%;background:#4ade80;border-radius:3px;"></div>
+            </div>
+            <div style="font-size:10px;color:#4ade80;margin-top:8px;">%31 tasarruf (LDR + PIR)</div>
+          </div>
+          <div style="background:#0a0c16;border-radius:10px;padding:14px;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:8px;">İklimlendirme</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#334155;">Manuel</span>
+              <span style="font-size:13px;color:#f87171;font-weight:bold;">100%</span>
+            </div>
+            <div style="height:6px;background:#1e2340;border-radius:3px;margin-bottom:8px;">
+              <div style="width:100%;height:100%;background:#f87171;border-radius:3px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#334155;">Akıllı Sistem</span>
+              <span style="font-size:13px;color:#4ade80;font-weight:bold;">82%</span>
+            </div>
+            <div style="height:6px;background:#1e2340;border-radius:3px;">
+              <div style="width:82%;height:100%;background:#4ade80;border-radius:3px;"></div>
+            </div>
+            <div style="font-size:10px;color:#4ade80;margin-top:8px;">%18 tasarruf (sıcaklık kontrolü)</div>
+          </div>
+          <div style="background:#0a0c16;border-radius:10px;padding:14px;">
+            <div style="font-size:11px;color:#64748b;margin-bottom:8px;">Genel Enerji</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#334155;">Manuel</span>
+              <span style="font-size:13px;color:#f87171;font-weight:bold;">100%</span>
+            </div>
+            <div style="height:6px;background:#1e2340;border-radius:3px;margin-bottom:8px;">
+              <div style="width:100%;height:100%;background:#f87171;border-radius:3px;"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <span style="font-size:11px;color:#334155;">Akıllı Sistem</span>
+              <span style="font-size:13px;color:#4ade80;font-weight:bold;">76%</span>
+            </div>
+            <div style="height:6px;background:#1e2340;border-radius:3px;">
+              <div style="width:76%;height:100%;background:#4ade80;border-radius:3px;"></div>
+            </div>
+            <div style="font-size:10px;color:#4ade80;margin-top:8px;">%24 toplam tasarruf</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  function renderRaporList() {
+    document.getElementById('rapor-list').innerHTML = SINIFLAR.map(s => `
+      <div class="rapor-row">
+        <div class="rapor-sname">Sınıf ${s.id}</div>
+        <div class="rapor-bars">
+          <div class="rbar-row"><span class="rbar-l">CO2</span><div class="rbar-bg"><div class="rbar-f" style="width:${co2Yuzde(s.co2)}%;background:${co2Renk(s.co2)};height:4px;border-radius:2px;"></div></div></div>
+          <div class="rbar-row"><span class="rbar-l">Nem</span><div class="rbar-bg"><div class="rbar-f" style="width:${s.nem}%;background:#8b5cf6;height:4px;border-radius:2px;"></div></div></div>
+          <div class="rbar-row"><span class="rbar-l">Öğr.</span><div class="rbar-bg"><div class="rbar-f" style="width:${Math.round(s.ogrenci / s.max * 100)}%;background:#3b82f6;height:4px;border-radius:2px;"></div></div></div>
+        </div>
+        <span class="rapor-score" style="color:${konforRenk(s.konfor)};border-color:${konforRenk(s.konfor)}33;">${s.konfor}</span>
+      </div>`).join('');
+
+    const avg = Math.round(SINIFLAR.reduce((a, s) => a + s.konfor, 0) / SINIFLAR.length);
+    document.getElementById('r-konfor').innerHTML = `${avg} <span class="munit">/100</span>`;
+
+    document.getElementById('uyari-list').innerHTML = SINIFLAR.map(s => {
+      if (s.co2 >= ESIKLER.co2Kritik)
+        return `<div class="uyari-box uyari-danger">⚠ Sınıf ${s.id}: CO2 ${s.co2} ppm — KRİTİK! Pencere açılıyor.</div>`;
+      if (s.co2 >= ESIKLER.co2Normal)
+        return `<div class="uyari-box uyari-warn">⚡ Sınıf ${s.id}: CO2 ${s.co2} ppm — Uyarı seviyesi.</div>`;
+      return `<div class="uyari-box uyari-good">✓ Sınıf ${s.id}: Tüm sensörler normal — Hava kalitesi iyi.</div>`;
+    }).join('');
+  }
+
+  sistemGuncelle();
+  renderRaporList();
+
+  new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+      labels: SINIFLAR.map(s => 'Sınıf ' + s.id),
+      datasets: [{
+        label: 'CO2 (ppm)',
+        data: SINIFLAR.map(s => s.co2),
+        backgroundColor: SINIFLAR.map(s => co2Renk(s.co2)),
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        y: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' }, min: 380 }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('nemChart'), {
+    type: 'doughnut',
+    data: {
+      labels: SINIFLAR.map(s => 'Sınıf ' + s.id),
+      datasets: [{ data: SINIFLAR.map(s => s.nem), backgroundColor: ['#8b5cf6', '#6d28d9', '#4c1d95'], borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { display: false } } }
+  });
+
+  new Chart(document.getElementById('tempChart'), {
+    type: 'bar',
+    data: {
+      labels: ['A', 'B', 'C'],
+      datasets: [{ data: SINIFLAR.map(s => s.temp), backgroundColor: '#60a5fa', borderRadius: 5 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+        y: { ticks: { color: '#334155', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' }, min: 15 }
+      }
+    }
+  });
+
+  new Chart(document.getElementById('konforChart'), {
+    type: 'doughnut',
+    data: {
+      labels: SINIFLAR.map(s => 'Sınıf ' + s.id),
+      datasets: [{ data: SINIFLAR.map(s => s.konfor), backgroundColor: SINIFLAR.map(s => konforRenk(s.konfor)), borderWidth: 0 }]
+    },
+    options: { responsive: true, maintainAspectRatio: false, cutout: '60%', plugins: { legend: { display: false } } }
+  });
+
+  setInterval(() => { document.getElementById('clock').textContent = saatStr(); }, 1000);
+  document.getElementById('clock').textContent = saatStr();
+</script>
+</body>
+</html>

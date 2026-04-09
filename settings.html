@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Akıllı Sınıf Sistemi — Eşik Değerleri</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/data.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">🏫</div>
+      <div class="logo-title">Akıllı Sınıf Sistemi</div>
+      <div class="logo-sub">ASHRAE & EN 12464-1 Uyumlu</div>
+    </div>
+    <nav>
+      <div class="nav-sec">Ana Menü</div>
+      <a class="nav-item" href="index.html">📊 Dashboard</a>
+      <a class="nav-item" href="class.html">🏫 Sınıf Yönetimi</a>
+      <a class="nav-item" href="sensors.html">🌡 Sensör Verileri</a>
+      <a class="nav-item" href="report.html">📈 Analiz & Rapor</a>
+      <div class="nav-sec">Sistem</div>
+      <a class="nav-item active" href="settings.html">⚙ Eşik Değerleri</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="sys-status"><span class="pulse"></span>Sistem Aktif</div>
+      <div style="font-size:10px;color:#334155;margin-top:4px;" id="clock"></div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <div class="page-title">Eşik Değerleri & Sistem Ayarları</div>
+        <div class="page-sub">ASHRAE 62.1 / ASHRAE 55-2017 / EN 12464-1 standart eşikleri</div>
+      </div>
+      <div class="tbadges">
+        <span class="tbadge tbb">ASHRAE 62.1</span>
+        <span class="tbadge tbb">ASHRAE 55-2017</span>
+        <span class="tbadge tbb">EN 12464-1</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <div class="bottom2">
+
+        <!-- SOL KOLON -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+
+          <div class="panel">
+            <div class="ptitle">CO2 Eşik Değerleri — ASHRAE 62.1</div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Normal Üst Sınır</span><span id="e1v" class="good">800 ppm</span></div>
+              <input type="range" min="600" max="1100" value="800" step="50" oninput="document.getElementById('e1v').textContent=this.value+' ppm'">
+              <div class="esik-desc">Bu değere kadar normal — herhangi bir müdahale gerekmez</div>
+            </div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Kritik Eşik</span><span id="e2v" class="warn">1000 ppm</span></div>
+              <input type="range" min="800" max="2000" value="1000" step="50" oninput="document.getElementById('e2v').textContent=this.value+' ppm'">
+              <div class="esik-desc">Aşılırsa tam havalandırma ve pencere açma komutu verilir</div>
+            </div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Tehlikeli Eşik</span><span id="e3v" class="danger">2000 ppm</span></div>
+              <input type="range" min="1500" max="5000" value="2000" step="100" oninput="document.getElementById('e3v').textContent=this.value+' ppm'">
+              <div class="esik-desc">Sesli alarm tetiklenir — acil tahliye uyarısı</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="ptitle">Sıcaklık Limitleri — ASHRAE 55-2017</div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Min. Konfor Sıcaklığı</span><span id="e4v" class="info">19°C</span></div>
+              <input type="range" min="15" max="22" value="19" step="1" oninput="document.getElementById('e4v').textContent=this.value+'°C'">
+              <div class="esik-desc">Altına düşünce klima ısıtma moduna geçer</div>
+            </div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Max. Konfor Sıcaklığı</span><span id="e5v" class="warn">24°C</span></div>
+              <input type="range" min="22" max="30" value="24" step="1" oninput="document.getElementById('e5v').textContent=this.value+'°C'">
+              <div class="esik-desc">Aşılırsa klima soğutma moduna geçer</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="ptitle">PIR Hareket Sensörü</div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Kapanma Süresi</span><span id="e10v" class="info">10 dk</span></div>
+              <input type="range" min="5" max="30" value="10" step="5" oninput="document.getElementById('e10v').textContent=this.value+' dk'">
+              <div class="esik-desc">Hareketsizlikte ışık ve klimanın kapanma süresi</div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- SAĞ KOLON -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+
+          <div class="panel">
+            <div class="ptitle">Nem Eşikleri — ASHRAE</div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Min. Nem Oranı</span><span id="e6v" class="info">%40</span></div>
+              <input type="range" min="20" max="50" value="40" step="5" oninput="document.getElementById('e6v').textContent='%'+this.value">
+              <div class="esik-desc">Altında kuruluk uyarısı verilir</div>
+            </div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Max. Nem Oranı</span><span id="e7v" class="warn">%60</span></div>
+              <input type="range" min="50" max="80" value="60" step="5" oninput="document.getElementById('e7v').textContent='%'+this.value">
+              <div class="esik-desc">Üstünde klima nem alma (dehümidifikasyon) modu devreye girer</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="ptitle">Işık Eşikleri — EN 12464-1</div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Masa Min. Aydınlatma</span><span id="e8v" class="good">300 lx</span></div>
+              <input type="range" min="100" max="500" value="300" step="50" oninput="document.getElementById('e8v').textContent=this.value+' lx'">
+              <div class="esik-desc">Altında yapay aydınlatma tam kapasiteyle devreye girer</div>
+            </div>
+            <div class="esik-row">
+              <div class="esik-header"><span>Tahta Min. Aydınlatma</span><span id="e9v" class="good">500 lx</span></div>
+              <input type="range" min="300" max="800" value="500" step="50" oninput="document.getElementById('e9v').textContent=this.value+' lx'">
+              <div class="esik-desc">Tahta ve sunum alanı için minimum aydınlatma seviyesi</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="ptitle">Sistem Bilgileri</div>
+            <div style="display:flex;flex-direction:column;gap:7px;">
+              <div class="ctrl-row"><span class="ctrl-label">Platform</span><span style="font-size:11px;color:#60a5fa;">HTML / CSS / JavaScript</span></div>
+              <div class="ctrl-row"><span class="ctrl-label">CO2 Standardı</span><span style="font-size:11px;color:#60a5fa;">ASHRAE 62.1</span></div>
+              <div class="ctrl-row"><span class="ctrl-label">Sıcaklık Standardı</span><span style="font-size:11px;color:#60a5fa;">ASHRAE 55-2017</span></div>
+              <div class="ctrl-row"><span class="ctrl-label">Işık Standardı</span><span style="font-size:11px;color:#60a5fa;">EN 12464-1</span></div>
+              <div class="ctrl-row"><span class="ctrl-label">Sensör Yöntemi</span><span style="font-size:11px;color:#60a5fa;">Matematiksel Simülasyon</span></div>
+              <div class="ctrl-row"><span class="ctrl-label">Grafik Kütüphanesi</span><span style="font-size:11px;color:#60a5fa;">Chart.js 4.4.1</span></div>
+              <div class="ctrl-row"><span class="ctrl-label">Sınıf Sayısı</span><span style="font-size:11px;color:#60a5fa;">3 (A, B, C)</span></div>
+              <div class="ctrl-row"><span class="ctrl-label">Koltuk / Sınıf</span><span style="font-size:11px;color:#60a5fa;">15</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- FORMÜLLER -->
+      <div class="panel">
+        <div class="ptitle">Hesaplama Formülleri ve Simülasyon Modeli</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+          <div class="formul-box">
+            <div class="formul-title">CO2 Simülasyonu:</div>
+            <div style="color:#334155;font-size:12px;">CO2 = 400 + (öğrenci × 45) ppm</div>
+            <div style="color:#475569;font-size:10px;margin-top:4px;">Kişi başı artış: 35–50 ppm<br>ASHRAE 62.1 referans alınmıştır</div>
+          </div>
+          <div class="formul-box">
+            <div class="formul-title">Sıcaklık & Nem (DHT22):</div>
+            <div style="color:#334155;font-size:12px;">T = T_ortam + (öğrenci × 0.3) °C</div>
+            <div style="color:#334155;font-size:12px;margin-top:4px;">Nem = 44 + (öğrenci/max × 12) %</div>
+            <div style="color:#475569;font-size:10px;margin-top:4px;">ASHRAE 55-2017 baz alınmıştır</div>
+          </div>
+          <div class="formul-box">
+            <div class="formul-title">Konfor Puanı (0–100):</div>
+            <div style="color:#334155;font-size:12px;">CO2 puanı: max 40</div>
+            <div style="color:#334155;font-size:12px;">Sıcaklık puanı: max 30</div>
+            <div style="color:#334155;font-size:12px;">Nem puanı: max 30</div>
+            <div style="color:#475569;font-size:10px;margin-top:4px;">Toplam = CO2 + Sıcaklık + Nem</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  setInterval(() => { document.getElementById('clock').textContent = saatStr(); }, 1000);
+  document.getElementById('clock').textContent = saatStr();
+</script>
+</body>
+</html>

@@ -6,42 +6,62 @@
    - Işık   : EN 12464-1
    ===================================================== */
 
-const SINIFLAR = [
+/* ===== ASHRAE / EN EŞİK DEĞERLERİ ===== */
+const ESIKLER = {
+  co2Normal  : 800,
+  co2Kritik  : 1000,
+  co2Tehlike : 2000,
+  tempMin    : 19,
+  tempMax    : 24,
+  nemMin     : 40,
+  nemMax     : 60,
+  isikMasa   : 300,
+  isikTahta  : 500,
+  pirKapanma : 10
+};
+
+/* ===== VARSAYILAN VERİ ===== */
+const VARSAYILAN_SINIFLAR = [
   { id: 'A', ad: 'Sınıf A', ogrenci: 8, max: 15, klima: 20, pencere: false, isik: true, pir: true, mod: 'auto' },
   { id: 'B', ad: 'Sınıf B', ogrenci: 0, max: 15, klima: 18, pencere: false, isik: false, pir: false, mod: 'auto' },
   { id: 'C', ad: 'Sınıf C', ogrenci: 0, max: 15, klima: 18, pencere: false, isik: false, pir: false, mod: 'auto' }
 ];
 
-/* ===== ASHRAE / EN EŞİK DEĞERLERİ ===== */
-const ESIKLER = {
-  co2Normal  : 800,    // ppm  - ASHRAE 62.1: Normal üst sınır
-  co2Kritik  : 1000,   // ppm  - ASHRAE 62.1: Kritik eşik
-  co2Tehlike : 2000,   // ppm  - ASHRAE 62.1: Tehlikeli seviye
-  tempMin    : 19,     // °C   - ASHRAE 55-2017: Min konfor sıcaklığı
-  tempMax    : 24,     // °C   - ASHRAE 55-2017: Max konfor sıcaklığı
-  nemMin     : 40,     // %    - ASHRAE: Min nem
-  nemMax     : 60,     // %    - ASHRAE: Max nem
-  isikMasa   : 300,    // lx   - EN 12464-1: Masa min aydınlatma
-  isikTahta  : 500,    // lx   - EN 12464-1: Tahta min aydınlatma
-  pirKapanma : 10      // dk   - Hareketsizlikte kapanma süresi
-};
+/* ===== LOCALSTORAGE İLE VERİ YÖNETİMİ ===== */
+// Sayfalar arası veri paylaşımı için localStorage kullanılır
+function veriYukle() {
+  try {
+    const kayitli = localStorage.getItem('akilli_sinif_data');
+    if (kayitli) {
+      const parsed = JSON.parse(kayitli);
+      // Kayıtlı veri varsa kullan, yoksa varsayılanı kullan
+      return parsed;
+    }
+  } catch(e) {}
+  return JSON.parse(JSON.stringify(VARSAYILAN_SINIFLAR));
+}
+
+function veriKaydet(siniflar) {
+  try {
+    localStorage.setItem('akilli_sinif_data', JSON.stringify(siniflar));
+  } catch(e) {}
+}
+
+// Global SINIFLAR değişkeni localStorage'dan yüklenir
+let SINIFLAR = veriYukle();
 
 /* ===== CO2 HESAPLAMA ===== */
-// Formül: CO2 = 400 + (öğrenci × 45) ppm
-// Kişi başı 35-50 ppm artış (ASHRAE referans)
 function hesaplaCO2(ogrenci) {
   return 400 + (ogrenci * 45);
 }
 
 /* ===== SICAKLIK HESAPLAMA ===== */
-// Formül: T = T_ortam + (öğrenci × 0.3) °C
-function hesaplaSicaklik(ogrenci, ortamTemp) {
-  ortamTemp = ortamTemp || 20;
+function hesaplaSicaklik(ogrenci) {
+  const ortamTemp = 20;
   return parseFloat((ortamTemp + (ogrenci * 0.3)).toFixed(1));
 }
 
 /* ===== NEM HESAPLAMA ===== */
-// Doluluk ve saat parametreli model
 function hesaplaNem(ogrenci, max) {
   const bazNem = 44;
   const ogrenciEtkisi = (ogrenci / max) * 12;
@@ -49,42 +69,46 @@ function hesaplaNem(ogrenci, max) {
 }
 
 /* ===== LDR DOĞAL IŞIK ===== */
-// Saate göre doğal ışık simülasyonu
 function hesaplaLDR() {
   const saat = new Date().getHours();
   const dakika = new Date().getMinutes();
   const zamanDecimal = saat + dakika / 60;
-  // Sabah 6 → öğle 12 → akşam 18 arası değişim
   if (zamanDecimal < 6 || zamanDecimal > 20) return 20;
-  if (zamanDecimal >= 10 && zamanDecimal <= 14) return 850; // öğle en parlak
+  if (zamanDecimal >= 10 && zamanDecimal <= 14) return 850;
   if (zamanDecimal < 10) return Math.round(20 + (zamanDecimal - 6) * 207);
   return Math.round(850 - (zamanDecimal - 14) * 138);
 }
 
 /* ===== KONFOR PUANI HESAPLAMA ===== */
-// Maksimum 100 puan: CO2(40) + Sıcaklık(30) + Nem(30)
+// CO2(40 puan) + Sıcaklık(30 puan) + Nem(30 puan) = Max 100
+// ASHRAE 62.1, ASHRAE 55-2017 standartlarına göre ağırlıklandırılmıştır
+// CO2 insan sağlığını en çok etkileyen faktör olduğundan en yüksek ağırlığı alır
 function hesaplaKonfor(co2, temp, nem) {
   let puan = 0;
-  // CO2 puanı (40 puan max)
   if (co2 < ESIKLER.co2Normal) puan += 40;
   else if (co2 < ESIKLER.co2Kritik) puan += 20;
   else puan += 0;
-  // Sıcaklık puanı (30 puan max)
   if (temp >= ESIKLER.tempMin && temp <= ESIKLER.tempMax) puan += 30;
   else if (temp >= 18 && temp <= 26) puan += 15;
   else puan += 0;
-  // Nem puanı (30 puan max)
   if (nem >= ESIKLER.nemMin && nem <= ESIKLER.nemMax) puan += 30;
   else if (nem >= 30 && nem <= 70) puan += 15;
   else puan += 0;
   return puan;
 }
 
+/* ===== KONFOR ETİKETİ ===== */
+// Sayısal puanı anlaşılır etikete çevirir
+function konforEtiket(puan) {
+  if (puan >= 80) return { etiket: 'İyi', renk: '#4ade80', bg: '#052e16', border: '#14532d' };
+  if (puan >= 60) return { etiket: 'Orta', renk: '#fbbf24', bg: '#1c1407', border: '#78350f' };
+  if (puan >= 40) return { etiket: 'Dikkat', renk: '#fb923c', bg: '#1c0f07', border: '#7c2d12' };
+  return { etiket: 'Kötü', renk: '#f87171', bg: '#1c0a0a', border: '#7f1d1d' };
+}
+
 /* ===== OTOMATİK KONTROL KARARLARI ===== */
-// ASHRAE eşiklerine göre otomatik karar mekanizması
 function otomatikKarar(sinif, co2, temp, nem, ldr) {
   if (sinif.mod !== 'auto') return;
-  // PIR: Öğrenci yoksa kapat
   if (sinif.ogrenci === 0) {
     sinif.isik = false;
     sinif.klima = 18;
@@ -93,19 +117,16 @@ function otomatikKarar(sinif, co2, temp, nem, ldr) {
     return;
   }
   sinif.pir = true;
-  // CO2 kontrolü (ASHRAE 62.1)
   if (co2 >= ESIKLER.co2Kritik) {
     sinif.pencere = true;
   } else if (co2 < ESIKLER.co2Normal) {
     sinif.pencere = false;
   }
-  // Sıcaklık kontrolü (ASHRAE 55-2017)
   if (temp > ESIKLER.tempMax) {
     sinif.klima = Math.max(16, sinif.klima - 1);
   } else if (temp < ESIKLER.tempMin) {
     sinif.klima = Math.min(30, sinif.klima + 1);
   }
-  // Işık kontrolü (EN 12464-1)
   sinif.isik = ldr < ESIKLER.isikMasa;
 }
 
@@ -113,13 +134,19 @@ function otomatikKarar(sinif, co2, temp, nem, ldr) {
 function sistemGuncelle() {
   const ldr = hesaplaLDR();
   SINIFLAR.forEach(s => {
-    s.co2  = hesaplaCO2(s.ogrenci);
-    s.temp = hesaplaSicaklik(s.ogrenci);
-    s.nem  = hesaplaNem(s.ogrenci, s.max);
-    s.ldr  = ldr;
+    s.co2    = hesaplaCO2(s.ogrenci);
+    s.temp   = hesaplaSicaklik(s.ogrenci);
+    s.nem    = hesaplaNem(s.ogrenci, s.max);
+    s.ldr    = ldr;
     s.konfor = hesaplaKonfor(s.co2, s.temp, s.nem);
-    otomatikKarar(s, s.co2, s.temp, s.nem, s.ldr);
+    // Sadece auto modda otomatik karar ver
+    // Manuel modda cihaz durumlarına dokunma
+    if (s.mod === 'auto') {
+      otomatikKarar(s, s.co2, s.temp, s.nem, s.ldr);
+    }
   });
+  // Her güncellemede localStorage'a kaydet
+  veriKaydet(SINIFLAR);
 }
 
 /* ===== YARDIMCI FONKSİYONLAR ===== */
@@ -128,7 +155,7 @@ function co2Renk(v) {
 }
 
 function konforRenk(v) {
-  return v >= 80 ? '#4ade80' : v >= 60 ? '#fbbf24' : '#f87171';
+  return v >= 80 ? '#4ade80' : v >= 60 ? '#fbbf24' : v >= 40 ? '#fb923c' : '#f87171';
 }
 
 function co2Yuzde(v) {

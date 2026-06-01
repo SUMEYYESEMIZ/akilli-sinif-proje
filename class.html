@@ -298,6 +298,7 @@
   setInterval(() => { document.getElementById('clock').textContent = saatStr(); }, 1000);
   document.getElementById('clock').textContent = saatStr();
   sayfayiGuncelle();
+  setInterval(() => { sistemGuncelle(); sayfayiGuncelle(); }, 3000);
 </script>
 </body>
 </html>
